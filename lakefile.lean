@@ -204,3 +204,7 @@ lean_lib NSSE where
   `NSSE.ContraEntailmentDecision,
   `NSSE.ContraGadgetCycles, `NSSE.ContraFiniteEntailment, `NSSE.ContraTermEntailmentDecision,
   `NSSE.CanonicalMismatchResponse, `NSSE.ExecutableAutomataAvoiderTest, `NSSE.FiniteMonoidIdempotent, `NSSE.FiniteMonoidPowers, `NSSE.FinitePrefixControlRepetition, `NSSE.ForestCopyEmitter, `NSSE.ForestHubEmitter, `NSSE.IdempotentPowerForest, `NSSE.MinimalAvoiderFactorForest, `NSSE.RegisteredAttachmentMismatchResponse, `NSSE.RegisteredAttachmentStructuralResponse, `NSSE.RegisteredEmptyAvoiderAtom]
+
+@[default_target]
+lean_lib NSSEMultiConstructor where
+  roots := #[`NSSEMultiConstructor]

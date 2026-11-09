@@ -7,7 +7,8 @@ signature with bottom `bot`, top `top` and **one constructor `f` of arity `d > 0
 * **arbitrary variance**: each argument of `f` covariant or contravariant, given by a polarity vector. Function
   types `{bot, ->, top}` are the case `d = 2` with polarity (contravariant, covariant).
 
-Several constructors are **not** covered; that case remains open.
+A second part decides the same problem for **several constructors** of arbitrary finite arities, covariant or with
+head- and argument-dependent variance (for example `{bot, ->, *, top}`); see [Several constructors](#several-constructors).
 
 The development was produced with the help of AI assistants (Anthropic's Claude and OpenAI's Codex/ChatGPT) and is
 machine-checked by Lean. It has **not** yet been reviewed by a human referee; please treat it as research material.
@@ -48,15 +49,32 @@ the greatest simulation (`NSSE/ContraTrees.lean`, `IsSim`, `Le`).
 **Complexity.** For the covariant decision, `NSSE/SevenExpTime.lean` bounds the counted step measure of the
 implementation, decoding included, by seven exponentials of a polynomial in the encoded input length. This is a
 statement about a counted cost model, not about machine time; the machine-time statement is written down as an open
-proposition in `NSSE/SevenExpTimeTarget.lean`. No complexity bound is claimed for the arbitrary-variance decision.
+proposition in `NSSE/SevenExpTimeTarget.lean`. No complexity bound is claimed for the arbitrary-variance decision or for several constructors.
 The procedures prove decidability; they are not practical: the full decision does not finish on small inputs.
+
+## Several constructors
+
+Here the signature is `bot`, `top` and a finite type `H` of heads, each `h : H` with arity `arity h` (nullary heads and
+an empty `H` are allowed). Terms, premises (`s <= t`, `s = t`) and the query are as above (`NSSE/MultiConstructorTerms.lean`,
+`Query`). Two heads are comparable only through `bot` and `top`; `g(a) <= g(b)` holds argumentwise, reversed at contravariant arguments.
+
+| result | module | theorems |
+|---|---|---|
+| covariant, term input | `NSSE/MultiConstructorTermDecision.lean` | `inspectAll_correct`, `inspectRegular_correct`, `inspectFinite_correct`, satisfiability: `inspectAllSatisfiable_correct`, `inspectFiniteSatisfiable_correct` |
+| head- and argument-dependent variance, term input | `NSSE/MultiVarianceTermDecision.lean` | `inspectAll_correct`, `inspectRegular_correct`, `inspectFinite_correct`, satisfiability as above |
+| same, countermodels | `NSSE/MultiVarianceTermExtraction.lean` | `all_none`, `all_some` (finite-graph countermodel), `regular_none`, `finite_none`, `finite_some` (finite countermodel) |
+
+The variance is a polarity `pol : (h : H) -> Fin (arity h) -> Bool` (`NSSE/MultiVarianceEncoding.lean`); `pol h i = true`
+makes argument `i` of `h` contravariant. `NSSEMultiConstructor.lean` imports the three modules; build it with
+`lake build NSSEMultiConstructor`. Only the modules these theorems depend on are included (about 340 files). No
+complexity bound is claimed, and the procedures are not practical.
 
 ## Trust base
 
 * Lean `v4.19.0`, Mathlib `v4.19.0`.
 * No `sorry`, no added axioms, no `native_decide`. `#print axioms` on the final theorems gives
   `[propext, Classical.choice, Quot.sound]`.
-* `lake build` builds every file of the repository (about 980 modules besides Mathlib).
+* `lake build` builds every file of the repository (about 1,320 modules besides Mathlib).
 
 ```sh
 lake exe cache get   # optional: downloads Mathlib build files
@@ -68,8 +86,12 @@ To check the axioms, compile a file such as
 ```lean
 import NSSE.TermEntailmentDecision
 import NSSE.ContraTermEntailmentDecision
+import NSSEMultiConstructor
 #print axioms NSSE.TermEntailmentDecision.decideAll_correct
 #print axioms NSSE.ContraTermEntailmentDecision.decideAll_correct
+#print axioms NSSE.MultiConstructorTermDecision.inspectAll_correct
+#print axioms NSSE.MultiVarianceTermDecision.inspectAll_correct
+#print axioms NSSE.MultiVarianceTermExtraction.all_some
 ```
 
 with `lake env lean <file>`.
@@ -102,8 +124,12 @@ split covariant system does not.
   arbitrary-variance development: `ContraTrees`, `ContraConstraints`, `ContraSupport`, `ContraSatisfiability`,
   `ContraAutomaton`, `ContraSoundness`, `ContraGadget*`, `ContraCompleteness`, `ContraEntailmentDecision`,
   `ContraFinite*`, `ContraTerm*`.
-* Many other modules are research-side developments from attempts at the several-constructor case and at related
-  combinatorial questions. They are checked by Lean, but they do not establish anything about several constructors.
+* The several-constructor theorems depend on the modules imported, directly or not, by `NSSEMultiConstructor.lean`:
+  mostly `MultiConstructor*`, `MultiVariance*` and `P0*`, plus two older modules (`GeneralCopyGrid`,
+  `PeriodicCopyHeadNormalization`).
+* Many other modules are research-side developments from earlier attempts at the several-constructor case and at
+  related combinatorial questions. They are checked by Lean.
+* `paper_en.pdf` explains the one-constructor covariant proof (the paper does not cover the other results).
 * `NSSE/Erratum.lean` and `NSSE/ErratumInstance.lean` formalize the core of an erratum to Niehren and Priesnitz,
   *Information and Computation* 186(2), 2003: Proposition 16(2) and Theorem 4 (the back translation) are false as
   stated, and the minimal three-state counterexample to Proposition 16(2) is proved in Lean.
