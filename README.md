@@ -1,30 +1,34 @@
-# Decidability of non-structural subtype entailment for one constructor (Lean 4)
+# Decidability of non-structural subtype entailment (Lean 4)
 
-This repository contains a Lean 4 formalization that decides **non-structural subtype entailment** (NSSE) for the
-signature with bottom `bot`, top `top` and **one constructor `f` of arity `d > 0`**, in two versions:
+This repository contains a Lean 4 formalization that decides **non-structural subtype entailment** (NSSE) over
+finite, regular and arbitrary trees, for signatures with bottom `bot` and top `top`:
 
-* **covariant** `f`: every argument covariant;
-* **arbitrary variance**: each argument of `f` covariant or contravariant, given by a polarity vector. Function
-  types `{bot, ->, top}` are the case `d = 2` with polarity (contravariant, covariant).
+* **one constructor** `f` of arity `d > 0`, either covariant or with arbitrary variance (each argument covariant or
+  contravariant, given by a polarity vector; function types `{bot, ->, top}` are `d = 2` with polarity
+  (contravariant, covariant));
+* **several constructors** of arbitrary finite arities, either all covariant or with head- and argument-dependent
+  variance (for example `{bot, ->, *, top}`); see [Several constructors](#several-constructors).
 
-A second part decides the same problem for **several constructors** of arbitrary finite arities, covariant or with
-head- and argument-dependent variance (for example `{bot, ->, *, top}`); see [Several constructors](#several-constructors).
+Countermodels are computed when entailment fails.
 
 The development was produced with the help of AI assistants (Anthropic's Claude and OpenAI's Codex/ChatGPT) and is
 machine-checked by Lean. It has **not** yet been reviewed by a human referee; please treat it as research material.
+A written explanation exists only for the one-constructor covariant case (`paper_en.pdf`).
 
 ## The problem
 
-Trees are possibly infinite trees over `{bot, f, top}`. The order is the non-structural one: `bot <= t <= top`, and
-`f(a_1,...,a_d) <= f(b_1,...,b_d)` iff `a_i <= b_i` at covariant and `b_i <= a_i` at contravariant positions. On infinite trees
-the order is the greatest such relation. An input is a finite list of premises `s <= t` and `s = t` between
-arbitrarily nested terms over variables, `bot`, `top` and `f`, together with a query `a <= b` between two terms. The
-question is whether every valuation satisfying the premises satisfies the query. Three semantic domains are treated
-separately: arbitrary trees, regular trees (finite graphs), and finite trees.
+Trees are possibly infinite trees whose nodes are labelled `bot`, `top` or a constructor; a node labelled by a
+constructor of arity `k` has `k` children. The order is the non-structural one: `bot <= t <= top`, two trees with
+different constructors at the root are incomparable, and `g(a_1,...,a_k) <= g(b_1,...,b_k)` iff `a_i <= b_i` at
+covariant and `b_i <= a_i` at contravariant positions. On infinite trees the order is the greatest such relation. An
+input is a finite list of premises `s <= t` and `s = t` between arbitrarily nested terms over variables, `bot`, `top`
+and the constructors, together with a query `a <= b` between two terms. The question is whether every valuation
+satisfying the premises satisfies the query. Three semantic domains are treated separately: arbitrary trees, regular
+trees (finite graphs), and finite trees.
 
-## Main theorems
+## One constructor
 
-All final theorems carry the hypothesis `0 < d`. Each Boolean below is a computable definition.
+All final theorems of this part carry the hypothesis `0 < d`. Each Boolean below is a computable definition.
 
 | result | module | theorems |
 |---|---|---|
@@ -46,17 +50,20 @@ theorem NSSE.ContraTermEntailmentDecision.decideAll_correct
 where `ContraConstraints.treeConstructor POL` is the constructor on the type of all trees with the order defined as
 the greatest simulation (`NSSE/ContraTrees.lean`, `IsSim`, `Le`).
 
-**Complexity.** For the covariant decision, `NSSE/SevenExpTime.lean` bounds the counted step measure of the
-implementation, decoding included, by seven exponentials of a polynomial in the encoded input length. This is a
-statement about a counted cost model, not about machine time; the machine-time statement is written down as an open
-proposition in `NSSE/SevenExpTimeTarget.lean`. No complexity bound is claimed for the arbitrary-variance decision or for several constructors.
-The procedures prove decidability; they are not practical: the full decision does not finish on small inputs.
+**Complexity.** For the one-constructor covariant decision, `NSSE/SevenExpTime.lean` bounds a counted step measure
+of the implementation by seven exponentials of a polynomial in the encoded input length. The count covers decoding
+the bit string and the decision itself, but not the conversion of the decoded query into the decision's internal
+form (`toQuery`, `packQuery` in `NSSE/CodedTermEntailment.lean`). It is a statement about this counted cost model,
+not about machine time. `NSSE/SevenExpTimeTarget.lean` writes down a machine-level target, but its machine model
+(`BitDecider`) puts no finiteness condition on `State`, so as stated it is not a meaningful open problem; the model
+needs repair. No complexity bound is claimed for the other decisions. The procedures prove decidability; they are
+not practical: the full decision does not finish on small inputs.
 
 ## Several constructors
 
-Here the signature is `bot`, `top` and a finite type `H` of heads, each `h : H` with arity `arity h` (nullary heads and
-an empty `H` are allowed). Terms, premises (`s <= t`, `s = t`) and the query are as above (`NSSE/MultiConstructorTerms.lean`,
-`Query`). Two heads are comparable only through `bot` and `top`; `g(a) <= g(b)` holds argumentwise, reversed at contravariant arguments.
+Here the constructors are the elements of a finite type `H` of heads, each `h : H` with arity `arity h` (nullary heads and
+an empty `H` are allowed). Terms, premises and the query are as in [The problem](#the-problem) (`NSSE/MultiConstructorTerms.lean`,
+`Query`). With `H` a one-element type this includes the one-constructor case, formalized separately.
 
 | result | module | theorems |
 |---|---|---|
@@ -65,7 +72,8 @@ an empty `H` are allowed). Terms, premises (`s <= t`, `s = t`) and the query are
 | same, countermodels | `NSSE/MultiVarianceTermExtraction.lean` | `all_none`, `all_some` (finite-graph countermodel), `regular_none`, `finite_none`, `finite_some` (finite countermodel) |
 
 The variance is a polarity `pol : (h : H) -> Fin (arity h) -> Bool` (`NSSE/MultiVarianceEncoding.lean`); `pol h i = true`
-makes argument `i` of `h` contravariant. `NSSEMultiConstructor.lean` imports the three modules; build it with
+makes argument `i` of `h` contravariant; the all-`false` polarity is the covariant case, so the countermodel
+theorems also cover it. `NSSEMultiConstructor.lean` imports the three modules; build it with
 `lake build NSSEMultiConstructor`. Only the modules these theorems depend on are included (about 340 files). No
 complexity bound is claimed, and the procedures are not practical.
 
@@ -74,7 +82,8 @@ complexity bound is claimed, and the procedures are not practical.
 * Lean `v4.19.0`, Mathlib `v4.19.0`.
 * No `sorry`, no added axioms, no `native_decide`. `#print axioms` on the final theorems gives
   `[propext, Classical.choice, Quot.sound]`.
-* `lake build` builds every file of the repository (about 1,320 modules besides Mathlib).
+* `lake build` builds the default targets `NSSE` (one constructor and the research-side modules) and
+  `NSSEMultiConstructor` (several constructors); `NSSE/` holds about 1,320 modules.
 
 ```sh
 lake exe cache get   # optional: downloads Mathlib build files
@@ -96,7 +105,10 @@ import NSSEMultiConstructor
 
 with `lake env lean <file>`.
 
-## How the proof goes
+## How the proof goes (one constructor)
+
+This section describes the one-constructor proof, which `paper_en.pdf` explains for the covariant case. The
+several-constructor proof is not described here; no written explanation of it has been prepared.
 
 1. **From entailment to words (Part I).** A failure of entailment is witnessed at a finite path of the trees.
    Support closure, clash conditions and a two-set least model decide satisfiability. A finite automaton reads
